@@ -1,0 +1,99 @@
+---
+title: "EDA-Challenge"
+author: "Sarah"
+date: "2024-02-06"
+output: html_document
+---
+#Load packages
+```{r}
+
+library("tidyverse")
+library(dplyr)
+```
+#Bring in data
+```{r}
+f <- "https://raw.githubusercontent.com/difiore/ada-2024-datasets/main/data-wrangling.csv"
+d <- read_csv(f, col_names = TRUE)
+names(d)
+```
+#Create Body Size Dimorphism (BSD) column.
+```{r}
+d <- mutate(d, BSD = (d$Body_mass_male_mean/d$Body_mass_female_mean))
+```
+#Create Sex Ratio column
+```{R}
+d <- mutate(d, Sex_Ratio = (d$AdultFemale/d$AdultMales))
+```
+#Create Defensibilty Index (DI) column (day range length/diameter of home range)
+```{R}
+d <- mutate(d, DI = (d$DayLength_km/((sqrt(d$HomeRange_km2/pi))*2)))
+```
+#Plot Day Length vs. Time Moving overall. I will also log transform the data.
+```{R}
+s<-ggplot(data=d, aes(x=log(DayLength_km), y=log(Move)))
+  s+geom_point(na.rm = TRUE)
+
+```
+#Plot Day Length vs Time Moving for each family. I will continue to log transform the data
+```{R}
+s<-ggplot(data=d, aes(x=log(DayLength_km), y=log(Move)))
+  s+geom_point(na.rm = TRUE)
+  s+geom_point(aes(color=factor(Family)), na.rm = TRUE)
+```
+Species that move around more travel farther. Cercopithecidae appear to travel the farthest.
+
+#Plot Day Length vs group size. Log transform the data.
+```{R}
+s<-ggplot(data=d, aes(x=log(DayLength_km), y=log(MeanGroupSize)))
+  s+geom_point(na.rm = TRUE)
+```
+#Plot Day Length vs group size separated by family
+```{R}
+s<-ggplot(data=d, aes(x=log(DayLength_km), y=log(MeanGroupSize)))
+  s+geom_point(na.rm = TRUE)
+  s+geom_point(aes(color=factor(Family)), na.rm = TRUE)
+```
+Larger groups travel farther. Cercopithecidae and Galagidae travel most with the biggest group size.
+
+#Now Plot BSD vs Canine Dimorphism. Log transform the data.
+```{R}
+s<-ggplot(data=d, aes(x=log(BSD), y=log(Canine_Dimorphism)))
+s+geom_point(na.rm = TRUE)
+```
+#Plot BSD vs canine dimorphism separated by family. 
+```{R}
+s<-ggplot(data=d, aes(x=log(BSD), y=log(Canine_Dimorphism)))
+  s+geom_point(na.rm = TRUE)
+  s+geom_point(aes(color=factor(Family)), na.rm = TRUE)
+```
+Taxa with greater BSD also have greater canine dimorphism. Cercopithecidae is a good example of this. 
+
+#Create a new column for diet strategy. 
+Frugivore = fruit >50% of diet
+Folivore = Leaves >50% of diet
+Omnivore = Neither of above is true
+```{R}
+d<-mutate(d, diet = case_when(Fruit >= 50 ~ "frugivore", Leaves >= 50 ~ "folivore", Fruit < 50 & Leaves < 50 ~ "omnivore"))
+```
+#Make Boxplots!! Want to look at how group size compares among diets.
+```{R}
+boxplot(data=d, log(MeanGroupSize) ~ diet, col="pink")
+stripchart(data=d, log(MeanGroupSize) ~ Family, method = "jitter", col="purple", vertical = TRUE, add = TRUE)
+
+```
+Frugivores live in smaller groups than folivores. 
+
+#Now manipulate the data frame in one line of code...
+Add column "Binomial"
+Trim data down to only Binomial, Family, Brain size species mean, and body mass male mean.
+Group by family. 
+Calculate average brain size and male body mass per family.
+Arrange by increasing average brain size
+```{R}
+s<-d%>% mutate(Binomial=paste0(Genus, " ", Species))%>%
+  select("Binomial","Family","Brain_Size_Species_Mean","Body_mass_male_mean")%>% 
+  group_by(Family)%>% 
+  mutate(Avg_Brain_Size=mean(Brain_Size_Species_Mean, na.rm=TRUE),Avg_Male_Body_Mass=mean(Body_mass_male_mean, na.rm=TRUE))%>%
+  arrange(Avg_Brain_Size)
+s
+```
